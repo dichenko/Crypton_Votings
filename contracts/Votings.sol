@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 contract Votings {
-
     struct Campaign {
         uint256 startAt;
         uint256 founded;
@@ -28,7 +27,10 @@ contract Votings {
 
     mapping(uint256 => Campaign) campaigns;
 
-    event newCampaignCreated(uint256 indexed campaignId, address indexed iniciator);
+    event newCampaignCreated(
+        uint256 indexed campaignId,
+        address indexed iniciator
+    );
     event campaingnFinished(
         uint256 indexed campaignId,
         uint256 prize,
@@ -73,12 +75,16 @@ contract Votings {
         Campaign storage c = campaigns[_index];
 
         c.ended = true;
-        uint256 comission = (campaigns[_index].founded * commissionPercent / 100);
-        ownerBalance += comission;
-        c.prize = c.founded - comission;
-        //every vinner receive its prize
-        for (uint256 i = 0; i < c.winnersList.length; i++) {
-            payable(c.winnersList[i]).transfer(c.prize/c.winnersList.length);
+        if (c.commonVoteCount > 0) {
+            uint256 comission = ((campaigns[_index].founded *
+                commissionPercent) / 100);
+            ownerBalance += comission;
+            c.prize = c.founded - comission;
+            uint256 prize = c.prize / c.winnersList.length;
+            //every vinner receive its prize
+            for (uint256 i = 0; i < c.winnersList.length; i++) {
+                payable(c.winnersList[i]).transfer(prize);
+            }
         }
         emit campaingnFinished(_index, c.founded, c.winnersList);
     }
@@ -92,11 +98,10 @@ contract Votings {
         c.voters[msg.sender] = true;
         c.founded += bid;
         c.voteCounter[_candidateAddress] += 1;
-        if (c.voteCounter[_candidateAddress] > c.maxVotesValue){ 
-            c.maxVotesValue = c.voteCounter[_candidateAddress] ;
+        if (c.voteCounter[_candidateAddress] > c.maxVotesValue) {
+            c.maxVotesValue = c.voteCounter[_candidateAddress];
             c.winnersList = [_candidateAddress];
-            } 
-        else if ( c.voteCounter[_candidateAddress] == c.maxVotesValue){
+        } else if (c.voteCounter[_candidateAddress] == c.maxVotesValue) {
             c.winnersList.push(_candidateAddress);
         }
         c.commonVoteCount += 1;
@@ -122,7 +127,6 @@ contract Votings {
     function setBid(uint256 _newBid) external onlyOwner {
         bid = _newBid;
     }
-
 
     function getVotesCount(uint256 _campaignId)
         external
@@ -177,7 +181,7 @@ contract Votings {
         return ownerBalance;
     }
 
-    function getBalance() public view returns (uint256) {
-        return address(this).balance;
-    }
+    // function getBalance() public view returns (uint256) {
+    //     return address(this).balance;
+    // }
 }
