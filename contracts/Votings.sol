@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 contract Votings {
     struct Campaign {
+        uint32 duration;
+        uint256 bid;
         uint256 startAt;
         uint256 founded;
         uint256 commonVoteCount;
@@ -17,11 +19,8 @@ contract Votings {
         address[] winnersList;
     }
 
-    bool locked;
     uint8 public commissionPercent = 10;
-    uint32 public duration = 7 days;
     address public owner;
-    uint256 public bid = 100 wei;
     uint256 public ownerBalance;
     uint256 currentCampaignIndex;
 
@@ -29,8 +28,11 @@ contract Votings {
 
     event newCampaignCreated(
         uint256 indexed campaignId,
+        uint32 duration,
+        uint256 bid,
         address indexed iniciator
     );
+
     event campaingnFinished(
         uint256 indexed campaignId,
         uint256 prize,
@@ -46,13 +48,16 @@ contract Votings {
         _;
     }
 
-    function createCampaign(address[] memory _candidateList)
-        external
-        returns (uint256)
-    {
+    function createCampaign(
+        address[] memory _candidateList,
+        uint256 _bid,
+        uint32 _duration
+    ) external returns (uint256) {
         require(_candidateList.length > 0, "Add more candidates");
         Campaign storage c = campaigns[currentCampaignIndex];
         c.startAt = block.timestamp;
+        c.bid = _bid;
+        c.duration = _duration;
 
         for (uint256 i = 0; i < _candidateList.length; i++) {
             //addresses must not be duplicated
@@ -62,17 +67,23 @@ contract Votings {
             }
         }
 
-        emit newCampaignCreated(currentCampaignIndex, msg.sender);
+        emit newCampaignCreated(
+            currentCampaignIndex,
+            _duration,
+            _bid,
+            msg.sender
+        );
         return currentCampaignIndex++;
     }
 
     function finishCampaign(uint256 _index) external {
+        Campaign storage c = campaigns[_index];
+
         require(
-            (campaigns[_index].startAt + duration) <= block.timestamp,
+            (c.startAt + c.duration) <= block.timestamp,
             "Time is not up yet."
         );
-        require(campaigns[_index].ended == false, "Voting already ended");
-        Campaign storage c = campaigns[_index];
+        require(c.ended == false, "Voting already ended");
 
         c.ended = true;
         if (c.commonVoteCount > 0) {
@@ -91,12 +102,12 @@ contract Votings {
 
     function vote(uint256 _index, address _candidateAddress) external payable {
         Campaign storage c = campaigns[_index];
-        require(c.startAt + duration > block.timestamp, "Voting time is up");
+        require(c.startAt + c.duration > block.timestamp, "Voting time is up");
         require(c.candidates[_candidateAddress], "Unknown candidate");
         require(!c.voters[msg.sender], "You have already voted");
-        require((msg.value == bid), "Wrong bid");
+        require((msg.value == c.bid), "Wrong bid");
         c.voters[msg.sender] = true;
-        c.founded += bid;
+        c.founded += c.bid;
         c.voteCounter[_candidateAddress] += 1;
         if (c.voteCounter[_candidateAddress] > c.maxVotesValue) {
             c.maxVotesValue = c.voteCounter[_candidateAddress];
@@ -120,14 +131,6 @@ contract Votings {
         commissionPercent = _newComissionPercent;
     }
 
-    function setDuration(uint32 _newDuration) external onlyOwner {
-        duration = _newDuration;
-    }
-
-    function setBid(uint256 _newBid) external onlyOwner {
-        bid = _newBid;
-    }
-
     function getVotesCount(uint256 _campaignId)
         external
         view
@@ -140,19 +143,13 @@ contract Votings {
         return commissionPercent;
     }
 
-    function getDuration() external view returns (uint32) {
-        return duration;
-    }
-
-    function getBid() external view returns (uint256) {
-        return bid;
-    }
-
     function getCampaignInformation(uint256 _campaignId)
         external
         view
         returns (
             bool,
+            uint256,
+            uint32,
             uint256,
             address[] memory,
             uint256,
@@ -163,6 +160,8 @@ contract Votings {
         return (
             c.ended,
             c.startAt,
+            c.duration,
+            c.bid,
             c.candidatesList,
             c.commonVoteCount,
             c.founded
@@ -180,5 +179,4 @@ contract Votings {
     function getOwnerBalance() external view returns (uint256) {
         return ownerBalance;
     }
-
 }
