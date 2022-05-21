@@ -185,20 +185,20 @@ describe("Votings", function () {
 
 
 
-  describe("Stop campaign", function () {
+  describe("Finish campaign", function () {
     it("Anyone can stop campaign", async function () {
       const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
+      await myContract.connect(user1).finishCampaign(0);
       const [ended, , , ,] = await myContract.getCampaignInformation(0);
       expect(ended).to.equal(true);
     });
 
     it("Forbidden to stop campaign before the end of voting time ", async function () {
       const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
-      await expect(myContract.connect(user1).stopCampaign(0)).to.be.revertedWith("Time is not up yet.");
+      await expect(myContract.connect(user1).finishCampaign(0)).to.be.revertedWith("Time is not up yet.");
 
     });
 
@@ -207,8 +207,8 @@ describe("Votings", function () {
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
-      await expect(myContract.connect(user1).stopCampaign(0)).to.be.revertedWith("Voting already ended");
+      await myContract.connect(user1).finishCampaign(0);
+      await expect(myContract.connect(user1).finishCampaign(0)).to.be.revertedWith("Voting already ended");
     });
 
     it("Should deposit owner's commission", async function () {
@@ -220,7 +220,7 @@ describe("Votings", function () {
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
+      await myContract.connect(user1).finishCampaign(0);
       const val = await myContract.getOwnerBalance();
       const [, , , , founded] = await myContract.getCampaignInformation(0);
       const comissionPercent = await myContract.getComissionPercent();
@@ -229,7 +229,7 @@ describe("Votings", function () {
     });
 
 
-    it("//TODO Should deposite correct prize sum", async function () {
+    it("Should deposite correct prize sum", async function () {
       const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
 
       const bid = await myContract.getBid();
@@ -240,28 +240,25 @@ describe("Votings", function () {
       await myContract.connect(user2).vote(0, user2.address, options);
       await myContract.connect(user3).vote(0, user3.address, options);
 
+      const percent = await myContract.getComissionPercent();
+      const expectedPrizeSum = bid*4*(100-percent)/100/2;
+      
+
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
 
-      await myContract.connect(user2).prizeWithdraw(0);
-      await myContract.connect(user3).prizeWithdraw(0);
-
-      const val = await myContract.getOwnerBalance();
-      await myContract.comissionWithdraw(val);
-
-      expect(await myContract.getBalance()).to.equal(0);
+      await expect( await myContract.connect(user1).finishCampaign(0)).to.changeEtherBalance(user3, expectedPrizeSum);
      });
 
-    it("Should emit a event 'campaingnEnded'", async function () {
+    it("Should emit a event 'campaingnFinished'", async function () {
       const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
       await expect(
-        myContract.connect(user1).stopCampaign(0)
-      ).to.emit(myContract, "campaingnEnded");
+        myContract.connect(user1).finishCampaign(0)
+      ).to.emit(myContract, "campaingnFinished");
 
     });
 
@@ -271,7 +268,7 @@ describe("Votings", function () {
 
   describe("Withdraw", function () {
 
-    it("Only owner should be able to Withdraw comission with correct amount ", async function () {
+    it("Only owner can withdraw comission", async function () {
       const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
       const bid = await myContract.getBid();
       const options = { value: bid };
@@ -280,7 +277,7 @@ describe("Votings", function () {
       const duration = await myContract.getDuration();
       await ethers.provider.send('evm_increaseTime', [Number(duration)]);
       await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
+      await myContract.connect(user1).finishCampaign(0);
       const val = await myContract.getOwnerBalance();
       await expect(myContract.connect(user1).comissionWithdraw(val)).to.be.reverted;
       await expect(myContract.comissionWithdraw(val.mul(2))).to.be.reverted;
@@ -288,22 +285,6 @@ describe("Votings", function () {
       const val2 = await myContract.getOwnerBalance();
       expect(val2).to.equal(0);
     });
-
-    
-    it("Only winner should be able to withdraw prize", async function () {
-      const campaign = await myContract.createCampaign([user1.address, user2.address, user3.address]);
-      const bid = await myContract.getBid();
-      const options = { value: bid };
-      await myContract.connect(user5).vote(0, user2.address, options);
-      await myContract.connect(user2).vote(0, user2.address, options);
-      const duration = await myContract.getDuration();
-      await ethers.provider.send('evm_increaseTime', [Number(duration)]);
-      await ethers.provider.send('evm_mine');
-      await myContract.connect(user1).stopCampaign(0);
-      await expect(myContract.connect(user5).prizeWithdraw(0)).to.be.revertedWith("Nothing to withdraw");
-      const prize = await myContract.connect(user2).prizeWithdraw(0);
-      await expect(myContract.connect(user2).prizeWithdraw(0)).to.be.revertedWith("Nothing to withdraw");
-     });
 
   });
 

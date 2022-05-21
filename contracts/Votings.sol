@@ -2,10 +2,12 @@
 pragma solidity ^0.8.0;
 
 contract Votings {
+
     struct Campaign {
         uint256 startAt;
         uint256 founded;
         uint256 commonVoteCount;
+        uint256 maxVotesValue;
         uint256 prize;
         bool ended;
         mapping(address => bool) voters;
@@ -16,17 +18,18 @@ contract Votings {
         address[] winnersList;
     }
 
-    address public owner;
-    mapping(uint256 => Campaign) campaigns;
-    uint256 public duration = 5;
-    uint256 bid = 1 ether;
-    uint256 public ownerBalance;
-    uint256 public commissionPercent = 10;
-    uint256 currentCampaignIndex;
     bool locked;
+    uint8 public commissionPercent = 10;
+    uint32 public duration = 7 days;
+    address public owner;
+    uint256 public bid = 100 wei;
+    uint256 public ownerBalance;
+    uint256 currentCampaignIndex;
 
-    event newCampaignCreated(uint256 indexed campaignId);
-    event campaingnEnded(
+    mapping(uint256 => Campaign) campaigns;
+
+    event newCampaignCreated(uint256 indexed campaignId, address indexed iniciator);
+    event campaingnFinished(
         uint256 indexed campaignId,
         uint256 prize,
         address[] winnersList
@@ -39,13 +42,6 @@ contract Votings {
     modifier onlyOwner() {
         require(msg.sender == owner, "Not an owner");
         _;
-    }
-
-    modifier noReentrancy() {
-        require(!locked, "no reentrancy!");
-        locked = true;
-        _;
-        locked = false;
     }
 
     function createCampaign(address[] memory _candidateList)
@@ -64,11 +60,11 @@ contract Votings {
             }
         }
 
-        emit newCampaignCreated(currentCampaignIndex);
+        emit newCampaignCreated(currentCampaignIndex, msg.sender);
         return currentCampaignIndex++;
     }
 
-    function stopCampaign(uint256 _index) external {
+    function finishCampaign(uint256 _index) external {
         require(
             (campaigns[_index].startAt + duration) <= block.timestamp,
             "Time is not up yet."
@@ -77,23 +73,14 @@ contract Votings {
         Campaign storage c = campaigns[_index];
 
         c.ended = true;
-        uint256 comission = (campaigns[_index].founded / 100) *
-            commissionPercent;
+        uint256 comission = (campaigns[_index].founded * commissionPercent / 100);
         ownerBalance += comission;
         c.prize = c.founded - comission;
-        // найти максимальное число голосов
-        uint256 maxVoicesValue = getmaxVoicesValue(_index);
-        //Всех кандидатов с максимальным числом голосов записать в winnersList
-        for (uint256 i = 0; i < c.candidatesList.length; i++) {
-            if (c.voteCounter[c.candidatesList[i]] == maxVoicesValue) {
-                c.winnersList.push(c.candidatesList[i]);
-            }
-        }
-        //каждому призёру из списка winnersList начислить приз (prize/N)
+        //every vinner receive its prize
         for (uint256 i = 0; i < c.winnersList.length; i++) {
-            c.prizeSum[c.winnersList[i]] = c.prize / c.winnersList.length;
+            payable(c.winnersList[i]).transfer(c.prize/c.winnersList.length);
         }
-        emit campaingnEnded(_index, c.founded, c.winnersList);
+        emit campaingnFinished(_index, c.founded, c.winnersList);
     }
 
     function vote(uint256 _index, address _candidateAddress) external payable {
@@ -105,30 +92,30 @@ contract Votings {
         c.voters[msg.sender] = true;
         c.founded += bid;
         c.voteCounter[_candidateAddress] += 1;
+        if (c.voteCounter[_candidateAddress] > c.maxVotesValue){ 
+            c.maxVotesValue = c.voteCounter[_candidateAddress] ;
+            c.winnersList = [_candidateAddress];
+            } 
+        else if ( c.voteCounter[_candidateAddress] == c.maxVotesValue){
+            c.winnersList.push(_candidateAddress);
+        }
         c.commonVoteCount += 1;
     }
 
-    function comissionWithdraw(uint256 _value) external onlyOwner {
-        require(_value <= ownerBalance, "insufficient funds");
-        ownerBalance -= _value;
-        payable(owner).transfer(_value);
+    function comissionWithdraw(uint256 _amount) external onlyOwner {
+        require(_amount <= ownerBalance, "insufficient funds");
+        ownerBalance -= _amount;
+        payable(owner).transfer(_amount);
     }
 
-    function prizeWithdraw(uint256 _campaignId) external noReentrancy {
-        Campaign storage c = campaigns[_campaignId];
-        require(c.prizeSum[msg.sender] > 0, "Nothing to withdraw");
-        payable(msg.sender).transfer(c.prizeSum[msg.sender]);
-        c.prizeSum[msg.sender] = 0;
-    }
-
-    function setComissionPercent(uint256 _newComissionPercent)
+    function setComissionPercent(uint8 _newComissionPercent)
         external
         onlyOwner
     {
         commissionPercent = _newComissionPercent;
     }
 
-    function setDuration(uint256 _newDuration) external onlyOwner {
+    function setDuration(uint32 _newDuration) external onlyOwner {
         duration = _newDuration;
     }
 
@@ -136,22 +123,6 @@ contract Votings {
         bid = _newBid;
     }
 
-    function getmaxVoicesValue(uint256 _campaignId)
-        private
-        view
-        returns (uint256)
-    {
-        Campaign storage c = campaigns[_campaignId];
-        uint256 maxVal = c.voteCounter[c.candidatesList[0]];
-
-        for (uint256 i = 1; i < c.candidatesList.length; i++) {
-            if (c.voteCounter[c.candidatesList[i]] > maxVal) {
-                maxVal = c.voteCounter[c.candidatesList[i]];
-            }
-        }
-
-        return maxVal;
-    }
 
     function getVotesCount(uint256 _campaignId)
         external
@@ -161,11 +132,11 @@ contract Votings {
         return campaigns[_campaignId].commonVoteCount;
     }
 
-    function getComissionPercent() external view returns (uint256) {
+    function getComissionPercent() external view returns (uint8) {
         return commissionPercent;
     }
 
-    function getDuration() external view returns (uint256) {
+    function getDuration() external view returns (uint32) {
         return duration;
     }
 
