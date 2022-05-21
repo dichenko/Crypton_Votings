@@ -20,6 +20,10 @@ In the case of more than one winner, the prize is divided equally.
 **Arguments**: 
  -  campaign index
  -  candidate address    
- **Example**: vote(42, "0x1c5d9eaDB66005324780a9A76B06B6cb4b78Cd87")  
+    
+ **Example**: vote(42, "0x1c5d9eaDB66005324780a9A76B06B6cb4b78Cd87")     
+
+
+ 
 
 
