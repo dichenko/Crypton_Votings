@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+//let [en, st, d, , candidatesList, commonVoteCount, founded] = await myContract.getCampaignInformation(0);
 
 describe("Votings", function () {
   let myContract;
@@ -26,13 +27,21 @@ describe("Votings", function () {
   describe("Create campaign", function () {
     it("Should emit event 'newCampaignCreated'", async function () {
       expect(
-        myContract.createCampaign([user1.address, user2.address, user3.address])
+        myContract.createCampaign(
+          [user1.address, user2.address, user3.address],
+          100,
+          3600
+        )
       ).to.emit(myContract, "newCampaignCreated");
     });
 
     it("Should create campaigns with correct campaignId", async function () {
       expect(
-        myContract.createCampaign([user1.address, user2.address, user3.address])
+        myContract.createCampaign(
+          [user1.address, user2.address, user3.address],
+          100,
+          3600
+        )
       )
         .to.emit(myContract, "newCampaignCreated")
         .withArgs(0);
@@ -48,59 +57,73 @@ describe("Votings", function () {
       expect(
         myContract
           .connect(user1)
-          .createCampaign([user1.address, user2.address, user3.address])
+          .createCampaign(
+            [user1.address, user2.address, user3.address],
+            100,
+            3600
+          )
       ).to.emit(myContract, "newCampaignCreated");
 
       expect(
         myContract
           .connect(user4)
-          .createCampaign([user1.address, user2.address, user3.address])
+          .createCampaign(
+            [user1.address, user2.address, user3.address],
+            100,
+            3600
+          )
       ).to.emit(myContract, "newCampaignCreated");
     });
 
     it("Should be at least one candidate", async function () {
-      await expect(myContract.createCampaign([])).to.be.revertedWith(
+      await expect(myContract.createCampaign([], 100, 3600)).to.be.revertedWith(
         "Add more candidates"
       );
     });
 
     it("There should be no duplicates on the list of candidates", async function () {
-      const camp = await myContract.createCampaign([
-        user1.address,
-        user1.address,
-        user1.address,
-      ]);
-      const [, , arr, ,] = await myContract.getCampaignInformation(0);
-      const len = arr.length;
-      expect(len).to.equal(1);
+      const camp = await myContract.createCampaign(
+        [user1.address, user1.address, user1.address],
+        100,
+        3600
+      );
+      let [, , , , candidatesList, ,] = await myContract.getCampaignInformation(
+        0
+      );
+
+      expect(candidatesList.length).to.equal(1);
     });
   });
 
   describe("Vote", function () {
     it("Everyone has the opportunity to vote", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+
+      const [, , , bid, , ,] = await myContract.getCampaignInformation(0);
       const options = { value: bid };
 
       await myContract.vote(0, user1.address, options);
-      await myContract.connect(user1).vote(0, user1.address, options);
+      await myContract.connect(user1).vote(0, user3.address, options);
       await myContract.connect(user2).vote(0, user1.address, options);
-      await myContract.connect(user4).vote(0, user1.address, options);
-      const [, , , val] = await myContract.getCampaignInformation(0);
-      expect(val).to.equal(4);
+      await myContract.connect(user4).vote(0, user3.address, options);
+      let [, , , , , commonVoteCount] = await myContract.getCampaignInformation(
+        0
+      );
+      expect(commonVoteCount).to.equal(4);
     });
 
     it("It is forbidden to vote after the end of voting time ", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const duration = await myContract.getDuration();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , duration, , , ,] = await myContract.getCampaignInformation(0);
+
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
       await expect(myContract.vote(0, user1.address)).to.be.revertedWith(
@@ -109,23 +132,23 @@ describe("Votings", function () {
     });
 
     it("Schould can vote only for existing candidate ", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
       await expect(myContract.vote(0, user4.address)).to.be.revertedWith(
         "Unknown candidate"
       );
     });
 
     it("Everyone can vote only once", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , , bid, , ,] = await myContract.getCampaignInformation(0);
       const options = { value: bid };
       await myContract.connect(user1).vote(0, user2.address, options);
       await expect(
@@ -137,40 +160,42 @@ describe("Votings", function () {
     });
 
     it("The cost of voting is equal to the bid", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
-      const options = { value: bid + 1 }; //каак передать имененный bid?
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+
+      const [, , , bid, , ,] = await myContract.getCampaignInformation(0);
+      const options = { value: bid + 1 };
       await expect(
         myContract.connect(user1).vote(0, user2.address, options)
       ).to.be.revertedWith("Wrong bid");
     });
 
     it("Voting increases campaign funds", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , , bid, , , founded] = await myContract.getCampaignInformation(
+        0
+      );
       const options = { value: bid };
-      const [, , , , founded] = await myContract.getCampaignInformation(0);
       expect(founded).to.equal(0);
       await myContract.connect(user1).vote(0, user2.address, options);
-      const [, , , , founded1] = await myContract.getCampaignInformation(0);
+      const [, , , , , , founded1] = await myContract.getCampaignInformation(0);
       expect(founded1).to.equal(bid);
     });
 
     it("Voting increases vote count for the candidate", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , , bid, , ,] = await myContract.getCampaignInformation(0);
       const options = { value: bid };
       const counter1 = await myContract.getVoteCounterOfCandidate(
         0,
@@ -186,34 +211,35 @@ describe("Votings", function () {
     });
 
     it("Voting increases commonVoteCount ", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , , bid, , ,] = await myContract.getCampaignInformation(0);
       const options = { value: bid };
-      const counter1 = await myContract.getVotesCount(0);
-      expect(counter1).to.equal(0);
+      expect(await myContract.getVotesCount(0)).to.equal(0);
       await myContract.connect(user1).vote(0, user2.address, options);
-      const counter2 = await myContract.getVotesCount(0);
-      expect(counter2).to.equal(1);
+      expect(await myContract.getVotesCount(0)).to.equal(1);
     });
 
     it("Several campaigns must work at the same time  ", async function () {
-      const campaign1 = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const campaign2 = await myContract.createCampaign([
-        user4.address,
-        user5.address,
-      ]);
-      const bid = await myContract.getBid();
-      const options = { value: bid };
-      await myContract.connect(user1).vote(0, user2.address, options);
-      await myContract.connect(user1).vote(1, user4.address, options);
+      const campaign1 = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const campaign2 = await myContract.createCampaign(
+        [user4.address, user5.address],
+        200,
+        7200
+      );
+      const [, , , bid0, , ,] = await myContract.getCampaignInformation(0);
+      const [, , , bid1, , ,] = await myContract.getCampaignInformation(1);
+      const options0 = { value: bid0 };
+      const options1 = { value: bid1 };
+      await myContract.connect(user1).vote(0, user2.address, options0);
+      await myContract.connect(user1).vote(1, user4.address, options1);
       const counter1 = await myContract.getVotesCount(0);
       expect(counter1).to.equal(1);
       const counter2 = await myContract.getVotesCount(1);
@@ -223,37 +249,37 @@ describe("Votings", function () {
 
   describe("Finish campaign", function () {
     it("Anyone can stop campaign", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const duration = await myContract.getDuration();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , duration, , , ,] = await myContract.getCampaignInformation(0);
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
       await myContract.connect(user1).finishCampaign(0);
-      const [ended, , , ,] = await myContract.getCampaignInformation(0);
+      const [ended, , , , , ,] = await myContract.getCampaignInformation(0);
       expect(ended).to.equal(true);
     });
 
     it("Forbidden to stop campaign before the end of voting time ", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
       await expect(
         myContract.connect(user1).finishCampaign(0)
       ).to.be.revertedWith("Time is not up yet.");
     });
 
     it("Forbidden to stop campaign twice", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const duration = await myContract.getDuration();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , duration, , , ,] = await myContract.getCampaignInformation(0);
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
       await myContract.connect(user1).finishCampaign(0);
@@ -263,34 +289,39 @@ describe("Votings", function () {
     });
 
     it("Should deposit owner's commission", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+      const [, , duration, bid, , ,] = await myContract.getCampaignInformation(
+        0
+      );
       const options = { value: bid };
       await myContract.connect(user1).vote(0, user3.address, options);
       await myContract.connect(user2).vote(0, user3.address, options);
-      const duration = await myContract.getDuration();
+
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
+
       await myContract.connect(user1).finishCampaign(0);
       const val = await myContract.getOwnerBalance();
-      const [, , , , founded] = await myContract.getCampaignInformation(0);
+      const [, , , , , , founded] = await myContract.getCampaignInformation(0);
       const comissionPercent = await myContract.getComissionPercent();
       const expectedComission = founded.mul(comissionPercent).div(100);
       expect(val).to.equal(expectedComission);
     });
 
     it("Should deposite correct prize sum(1 winner)", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
 
-      const bid = await myContract.getBid();
+      const [, , duration, bid, , ,] = await myContract.getCampaignInformation(
+        0
+      );
       const options = { value: bid };
 
       await myContract.vote(0, user3.address, options);
@@ -302,7 +333,6 @@ describe("Votings", function () {
       const percent = await myContract.getComissionPercent();
       const expectedPrizeSum = (bid * 5 * (100 - percent)) / 100;
 
-      const duration = await myContract.getDuration();
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
 
@@ -310,15 +340,17 @@ describe("Votings", function () {
         await myContract.connect(user1).finishCampaign(0)
       ).to.changeEtherBalance(user3, expectedPrizeSum);
     });
-    
-    it("Should deposite correct prize sum (>1 winner)", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
 
-      const bid = await myContract.getBid();
+    it("Should deposite correct prize sum (>1 winner)", async function () {
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+
+      const [, , duration, bid, , ,] = await myContract.getCampaignInformation(
+        0
+      );
       const options = { value: bid };
 
       await myContract.vote(0, user2.address, options);
@@ -329,7 +361,6 @@ describe("Votings", function () {
       const percent = await myContract.getComissionPercent();
       const expectedPrizeSum = (bid * 4 * (100 - percent)) / 100 / 2;
 
-      const duration = await myContract.getDuration();
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
 
@@ -339,12 +370,13 @@ describe("Votings", function () {
     });
 
     it("Should emit a event 'campaingnFinished'", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const duration = await myContract.getDuration();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+
+      const [, , duration, , , ,] = await myContract.getCampaignInformation(0);
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
       await expect(myContract.connect(user1).finishCampaign(0)).to.emit(
@@ -356,16 +388,19 @@ describe("Votings", function () {
 
   describe("Withdraw", function () {
     it("Only owner can withdraw comission", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      const bid = await myContract.getBid();
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
+
+      const [, , duration, bid, , ,] = await myContract.getCampaignInformation(
+        0
+      );
       const options = { value: bid };
       await myContract.connect(user1).vote(0, user1.address, options);
       await myContract.connect(user2).vote(0, user2.address, options);
-      const duration = await myContract.getDuration();
+
       await ethers.provider.send("evm_increaseTime", [Number(duration)]);
       await ethers.provider.send("evm_mine");
       await myContract.connect(user1).finishCampaign(0);
@@ -381,42 +416,16 @@ describe("Votings", function () {
 
   describe("Setters", function () {
     it("setComissionPercent onlyOwner", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
+      const campaign = await myContract.createCampaign(
+        [user1.address, user2.address, user3.address],
+        100,
+        3600
+      );
       await myContract.setComissionPercent(50);
       expect(await myContract.getComissionPercent()).to.equal(50);
       await expect(
         myContract.connect(user1).setComissionPercent(1)
       ).to.be.revertedWith("Not an owner");
-    });
-
-    it("setDuration onlyOwner", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      await myContract.setDuration(3600);
-      expect(await myContract.getDuration()).to.equal(3600);
-      await expect(myContract.connect(user1).setDuration(1)).to.be.revertedWith(
-        "Not an owner"
-      );
-    });
-
-    it("setComissionPercent onlyOwner", async function () {
-      const campaign = await myContract.createCampaign([
-        user1.address,
-        user2.address,
-        user3.address,
-      ]);
-      await myContract.setBid(3);
-      expect(await myContract.getBid()).to.equal(3);
-      await expect(myContract.connect(user1).setBid(1)).to.be.revertedWith(
-        "Not an owner"
-      );
     });
   });
 });
