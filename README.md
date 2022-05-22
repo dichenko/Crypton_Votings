@@ -7,7 +7,6 @@ After the campaign finishing, winner can withdraw all ether (except for the comm
 In the case of more than one winner, the prize is divided equally.
 
 
-
 ### 1) Create new campaign  using "createCampaign" function.  
  **Arguments**: 
  - array of candidate addresses
@@ -15,19 +14,12 @@ In the case of more than one winner, the prize is divided equally.
  - voting duration (in seconds)  
    
 
-
 ### 2) Vote using  "vote" function.  You can vote once.
 **Arguments**: 
  -  campaign index
  -  candidate address    
     
-   
-
 
  ### 3) Finish campaign and withdraw prize using "finishCampaign" function.  
 **Arguments**: 
  -  campaign index   
-    
-
-
-
