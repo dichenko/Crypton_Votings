@@ -1,9 +1,9 @@
 # Votings contract
-Check my deployed contract at https://rinkeby.etherscan.io/address/0x31c35f816b3f50a003ee10395c8755e9aac2daa5
+Check my contract at https://rinkeby.etherscan.io/address/0x31c35f816b3f50a003ee10395c8755e9aac2daa5
 
 Сreate a voting campaign with any candidates. 
 Every voter must pay a bid to vote. Every voter can vote once.
-After the campaign finishing winner can withdraw all ether (except for the commission).
+After the campaign finishing, winner can withdraw all ether (except for the commission).
 In the case of more than one winner, the prize is divided equally.
 
 
@@ -24,6 +24,10 @@ In the case of more than one winner, the prize is divided equally.
  **Example**: vote(42, "0x1c5d9eaDB66005324780a9A76B06B6cb4b78Cd87")     
 
 
- 
+ ### 3) Finish campaign and withdraw prize using "finishCampaign" function.  
+**Arguments**: 
+ -  campaign index   
+    
+ **Example**: finishCampaign(42)     
 
 
