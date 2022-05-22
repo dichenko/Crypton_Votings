@@ -1,3 +1,5 @@
+const { task } = require("hardhat/config");
+
 require("@nomiclabs/hardhat-waffle");
 require("solidity-coverage");
 require("dotenv").config();
@@ -8,6 +10,17 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     console.log(account.address);
   }
 });
+
+task("startcampaign", "Create new campaign")
+  .addParam("addressList", "Array of the candidates addresses")
+  .addParam("bid", "Bid for voting (in wei)").addParam("duration", "duration of campaign in seconds")
+  .setAction(async (taskArgs) => {
+    Votings = await ethers.getContractFactory("Votings");
+    myContract = await Votings.deploy();
+    const id = await myContract.createCampaign(taskArgs.addressList, taskArgs.bid, taskArgs.duration);
+});
+
+
 
 module.exports = {
   solidity: "0.8.4",
