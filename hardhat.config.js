@@ -10,7 +10,9 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     console.log(account.address);
   }
 });
-//https://doc.aurora.dev/interact/hardhat/
+// https://doc.aurora.dev/interact/hardhat/
+// npx hardhat createСampaign --contractaddr 0x5FbDB2315678afecb367f032d93F642f64180aa3 --addresslist '0x70997970C51812dc3A010C7d01b50e0d17dc79C8, 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' --bid 1000000000000000000 --duration 3600 --network localhost
+0x5FbDB2315678afecb367f032d93F642f64180aa3 undefined 1000000000000000000 3600
 task("createСampaign", "Create new campaign").addParam('contractaddr', "Conrtact address")
   .addParam("addresslist", "Array of the candidates addresses")
   .addParam("bid", "Bid for voting (in wei)").addParam("duration", "duration of campaign in seconds")
@@ -20,7 +22,7 @@ task("createСampaign", "Create new campaign").addParam('contractaddr', "Conrtac
     console.log("-1");
     const myContract = Votings.attach(contractaddr);
     console.log("--2");
-    const [user0, user1] = ethers.getSigners();
+    const [user0, user1] = await ethers.getSigners();
     console.log("---3");
     const id = await myContract.connect(user0).createCampaign(addressList, bid, duration);
     console.log("Campaign created with id ${id}");
