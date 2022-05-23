@@ -10,14 +10,38 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     console.log(account.address);
   }
 });
-
-task("startcampaign", "Create new campaign")
-  .addParam("addressList", "Array of the candidates addresses")
+//https://doc.aurora.dev/interact/hardhat/
+task("createСampaign", "Create new campaign").addParam('contractaddr', "Conrtact address")
+  .addParam("addresslist", "Array of the candidates addresses")
   .addParam("bid", "Bid for voting (in wei)").addParam("duration", "duration of campaign in seconds")
-  .setAction(async (taskArgs) => {
-    Votings = await ethers.getContractFactory("Votings");
-    myContract = await Votings.deploy();
-    const id = await myContract.createCampaign(taskArgs.addressList, taskArgs.bid, taskArgs.duration);
+  .setAction(async ({contractaddr, addressList, bid, duration}, { ethers: { getSigners }, runsuper }) => {
+    console.log(contractaddr, addressList,bid,duration );
+    const Votings = await ethers.getContractFactory("Votings");
+    console.log("-1");
+    const myContract = Votings.attach(contractaddr);
+    console.log("--2");
+    const [user0, user1] = ethers.getSigners();
+    console.log("---3");
+    const id = await myContract.connect(user0).createCampaign(addressList, bid, duration);
+    console.log("Campaign created with id ${id}");
+    return id;
+});
+
+task("vote", "vote").addParam('contractaddr', "Conrtact address")
+  .addParam("campaign", "Campaign index")
+  .addParam("bid", "Bid for voting (in wei)").addParam("duration", "duration of campaign in seconds")
+  .setAction(async ({contractAddr, addressList, bid, duration}, { ethers: { getSigners }, runsuper }) => {
+    const Votings = await ethers.getContractFactory("Votings");
+    const myContract = Votings.attach(contractAddr);
+    const [user0] = hre.ethers.getSigners();
+    const id = await myContract.connect(user0).createCampaign(taskArgs.addressList, taskArgs.bid, taskArgs.duration);
+    console.log("Campaign created with id ${id}");
+    return id;
+});
+
+task("getcomissionpercent", "Get comission percent").addParam('contractaddr', "Conrtact address")
+.setAction(async ({contractaddr},{ ethers: { getSigners }, runsuper }) => {
+
 });
 
 

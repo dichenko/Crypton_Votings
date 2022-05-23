@@ -1,7 +1,7 @@
 {
   "name": "crypton_votings",
   "version": "1.0.0",
-  "description": "",
+  "description": "Check my contract at https://rinkeby.etherscan.io/address/0x31c35f816b3f50a003ee10395c8755e9aac2daa5",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -30,5 +30,8 @@
     "dotenv": "^16.0.1",
     "hardhat-waffle": "^0.0.1-security",
     "solidity-coverage": "^0.7.21"
+  },
+  "directories": {
+    "test": "test"
   }
 }
