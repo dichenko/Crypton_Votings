@@ -39,6 +39,13 @@ contract Votings {
         address[] winnersList
     );
 
+    event voterVoted(
+        uint256 indexed campaignId,
+        address indexed voter,
+        address indexed canddidate
+    );
+
+
     constructor() {
         owner = msg.sender;
     }
@@ -116,6 +123,7 @@ contract Votings {
             c.winnersList.push(_candidateAddress);
         }
         c.commonVoteCount += 1;
+        emit voterVoted(_index, msg.sender, _candidateAddress);
     }
 
     function comissionWithdraw(uint256 _amount) external onlyOwner {

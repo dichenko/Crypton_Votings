@@ -42,7 +42,7 @@ task("getcomissionpercent", "Get comission percent").addParam('contractaddr', "C
 .setAction(async ({contractaddr}) => {
   Votings = await ethers.getContractFactory("Votings");
   const myContract = Votings.attach(contractaddr);
-  const comissionPercent = await myContract.getComissinPercent;
+  const comissionPercent = await myContract.getComissionPercent();
   console.log(comissionPercent)
   return comissionPercent;
 });
