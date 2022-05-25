@@ -5,7 +5,7 @@ contract Votings {
     struct Campaign {
         bool ended;
         uint32 duration;
-        uint startAt;
+        uint64 startAt;
         uint256 bid;
         uint256 founded;
         uint256 commonVoteCount;
@@ -62,7 +62,7 @@ contract Votings {
     ) external returns (uint256) {
         require(_candidateList.length > 0, "Add more candidates");
         Campaign storage c = campaigns[currentCampaignIndex];
-        c.startAt = block.timestamp;
+        c.startAt = uint64 (block.timestamp);
         c.bid = _bid;
         c.duration = _duration;
 
