@@ -10,7 +10,6 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     console.log(account.address);
   }
 });
-// https://doc.aurora.dev/interact/hardhat/
 
 
 task("createСampaign", "Create new campaign").addParam('contractaddr', "Conrtact address")
@@ -44,7 +43,7 @@ task("getcomissionpercent", "Get comission percent").addParam('contractaddr', "C
   Votings = await ethers.getContractFactory("Votings");
   const myContract = Votings.attach(contractaddr);
   const comissionPercent = await myContract.getComissinPercent;
-  console.log("Comission percent = ${comissionPercent}")
+  console.log(comissionPercent)
   return comissionPercent;
 });
 
@@ -58,6 +57,9 @@ module.exports = {
       accounts: [process.env.PRIVATE_KEY],
     },
   },
+  etherscan:{
+    apiKey: process.env.API_KEY
+  }
 };
 
 

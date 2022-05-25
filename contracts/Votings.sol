@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 contract Votings {
     struct Campaign {
         bool ended;
-        uint64 startAt;
         uint32 duration;
+        uint startAt;
         uint256 bid;
         uint256 founded;
         uint256 commonVoteCount;

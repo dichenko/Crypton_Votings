@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "dotenv": "^16.0.1",
+    "hardhat-etherscan": "^1.0.1",
     "hardhat-waffle": "^0.0.1-security",
     "solidity-coverage": "^0.7.21"
   },
