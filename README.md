@@ -1,5 +1,5 @@
 # Votings contract
-Check my contract at https://rinkeby.etherscan.io/address/0xc343414fBD0cba801Cdc8CC024d73A54b4698764
+Check my contract at https://rinkeby.etherscan.io/address/0x5Ca6c1D9d9b6D215deAADdD490429D207Da16562
 
 Сreate a voting campaign with any candidates. 
 Every voter must pay a bid to vote. Every voter can vote once.
